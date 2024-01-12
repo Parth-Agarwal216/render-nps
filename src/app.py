@@ -7,13 +7,9 @@ import json
 import sys
 
 SURVEY_NAME = 'Survey1'
-    
-creds = {
-    "User":"nps_owner",
-    "Password":"owner_pwd_123",
-    "Cluster":"NPSCluster",
-    "Fields":"['Score', 'Review', 'Date']"
-}
+
+with open('credentials.json') as json_file:
+    creds = json.load(json_file)
 
 atlas_conn_str = f"mongodb+srv://{creds['User']}:{creds['Password']}@{creds['Cluster']}.gu6rrz5.mongodb.net/?retryWrites=true&w=majority"
 survey_fields = eval(creds['Fields'])
@@ -57,9 +53,20 @@ promoters = len(filter_promo)
 
 nps_score = round(((promoters - detractors) / total_responses) * 100, 2)
 
+nps_data['Category'] = ''
+nps_data.loc[condition_detractors, 'Category'] = 'detractors'
+nps_data.loc[condition_passive, 'Category'] = 'passive'
+nps_data.loc[condition_promo, 'Category'] = 'promoters'
+
+nps_data['Month'] = nps_data['Date'].apply(lambda x : x.split('-')[1])
+nps_data.drop('Date', axis='columns')
+nps_data.sort_values('Month', inplace=True)
+
+nps_data['NPS-over-time'] = 0
+for mo in nps_data['Month'].unique():
+    nps_data.loc[nps_data['Month'] == mo, 'NPS-over-time'] = 1 / (nps_data['Month'] == mo).sum()
 
 app = Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
-server = app.server
 
 def score_color(nps_score):
     if nps_score <= 6:
@@ -81,6 +88,15 @@ def generate_card(nps_score, review):
         style={'margin-bottom': '10px', 'padding-left': '20px', 'padding-right': '20px'}
     )
 
+nps_over_time_fig = px.bar(nps_data, x="Month", y="NPS-over-time", color='Category', color_discrete_sequence= ['#c61236','#fd8c3e','#07da63',])
+
+nps_over_time_fig.update_layout(
+    paper_bgcolor='#010203',
+    plot_bgcolor='#010203',
+    font=dict(color='white'),
+)
+
+nps_over_time_fig.update_traces(marker_line_width=0)
 
 pie_chart_figure = px.pie(values=[promoters, passives, detractors], 
                           names=['Promoters', 'Passives', 'Detractors'],
@@ -97,7 +113,7 @@ pie_chart_figure.update_traces(
 pie_chart_figure.update_layout(
     paper_bgcolor='#010203',
     plot_bgcolor='#010203',
-    font=dict(color='white')
+    font=dict(color='white'),
 )
 
 dcc.Graph(
@@ -129,10 +145,27 @@ app.layout = dbc.Container([
         ], width=3),
 
     ], justify="center"),
-  
-    dcc.Graph(
-        figure=pie_chart_figure
-    ),
+
+    html.Div([
+        dcc.Graph(
+            figure=nps_over_time_fig
+        )
+    ], style={'width': '48%', 'display': 'inline-block'}),  
+
+    html.Div([
+        dcc.Graph(
+            figure=pie_chart_figure
+        )
+    ], style={'width': '48%', 'display': 'inline-block'}),
+
+    # dcc.Graph(
+    #     figure=nps_over_time_fig
+    # ),
+
+    # dcc.Graph(
+    #     figure=pie_chart_figure
+    # ),
+
     html.P("Filter responses by entering a minimum and maximum score:", 
            className="text-center", style={'color': 'white', 'margin-top': '20px'}),
     
