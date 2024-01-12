@@ -67,6 +67,7 @@ for mo in nps_data['Month'].unique():
     nps_data.loc[nps_data['Month'] == mo, 'NPS-over-time'] = 1 / (nps_data['Month'] == mo).sum()
 
 app = Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
+server = app.server
 
 def score_color(nps_score):
     if nps_score <= 6:
