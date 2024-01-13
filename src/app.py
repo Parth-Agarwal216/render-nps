@@ -2,16 +2,22 @@ from dash import Dash, html,dcc, Input, Output
 import pandas as pd
 import dash_bootstrap_components as dbc
 import plotly.express as px
+import plotly.graph_objects as go
 import pymongo
 import json
 import sys
+from collections import Counter
+
+import base64
+from io import BytesIO
+from wordcloud import WordCloud
 
 SURVEY_NAME = 'Survey1'
 
 with open('credentials.json') as json_file:
     creds = json.load(json_file)
 
-atlas_conn_str = f"mongodb+srv://{creds['User']}:{creds['Password']}@{creds['Cluster']}.gu6rrz5.mongodb.net/?retryWrites=true&w=majority"
+atlas_conn_str = creds['Atlas-Conn-Str']
 survey_fields = eval(creds['Fields'])
 
 def get_nps_survey_responses(survey):
@@ -66,6 +72,30 @@ nps_data['NPS-over-time'] = 0
 for mo in nps_data['Month'].unique():
     nps_data.loc[nps_data['Month'] == mo, 'NPS-over-time'] = 1 / (nps_data['Month'] == mo).sum()
 
+## Word Cloud ##
+
+pos_reviews = " ".join(word for word in nps_data.loc[condition_promo, 'Review'])
+neg_reviews = " ".join(word for word in nps_data.loc[condition_passive | condition_detractors, 'Review'])
+
+pos_word_cloud = WordCloud(collocations = False, background_color = '#010203',
+                        width = 512, height = 256, min_font_size=16).generate(pos_reviews)
+
+neg_word_cloud = WordCloud(collocations = False, background_color = '#010203',
+                        width = 512, height = 256, min_font_size=16).generate(neg_reviews)
+
+pos_word_cloud_img2 = pos_word_cloud.to_image()
+neg_word_cloud_img2 = neg_word_cloud.to_image()
+
+with BytesIO() as buffer:
+    pos_word_cloud_img2.save(buffer, 'png')
+    pos_word_cloud_img = base64.b64encode(buffer.getvalue()).decode()
+
+with BytesIO() as buffer:
+    neg_word_cloud_img2.save(buffer, 'png')
+    neg_word_cloud_img = base64.b64encode(buffer.getvalue()).decode()
+
+## -------------- ##
+
 app = Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
 server = app.server
 
@@ -89,6 +119,8 @@ def generate_card(nps_score, review):
         style={'margin-bottom': '10px', 'padding-left': '20px', 'padding-right': '20px'}
     )
 
+## NPS over time plots ##
+
 nps_over_time_fig = px.bar(nps_data, x="Month", y="NPS-over-time", color='Category', color_discrete_sequence= ['#c61236','#fd8c3e','#07da63',])
 
 nps_over_time_fig.update_layout(
@@ -98,6 +130,27 @@ nps_over_time_fig.update_layout(
 )
 
 nps_over_time_fig.update_traces(marker_line_width=0)
+
+## Product Rebuy ##
+
+percent_rebuy_yes = round(100 * nps_data['rebuy'].sum()/len(nps_data))
+br = pd.DataFrame({'Yes/No':['Yes', 'No'], 'Percentage_Customers_Buy_Again':[percent_rebuy_yes, 100 - percent_rebuy_yes], 'Response':['Yes/No', 'Yes/No']})
+
+product_yn_bar = px.bar(br, y="Response", x="Percentage_Customers_Buy_Again", orientation='h', color='Yes/No',
+                         color_discrete_sequence= ['green', 'red'], text=br['Percentage_Customers_Buy_Again'].apply(lambda x: f'{x}%'))
+
+product_yn_bar.update_layout(
+    height=200,
+    paper_bgcolor='#010203',
+    plot_bgcolor='#010203',
+    font=dict(color='white'),
+    xaxis=dict(showgrid=False),
+    yaxis=dict(showgrid=False),
+    title_x=0.5,
+    showlegend=False,
+)
+
+## NPS Pie Chart ##
 
 pie_chart_figure = px.pie(values=[promoters, passives, detractors], 
                           names=['Promoters', 'Passives', 'Detractors'],
@@ -121,29 +174,87 @@ dcc.Graph(
     figure=pie_chart_figure
 )
 
+## Checkboxes Responses ##
+
+pos_fts_list = []
+neg_fts_list = []
+
+for idx in nps_data.index:
+    if nps_data.loc[idx, 'Sentiment'] == 'positive':
+        pos_fts_list.extend(eval(nps_data.loc[idx, 'checkbox_fts']))
+    else:
+        neg_fts_list.extend(eval(nps_data.loc[idx, 'checkbox_fts']))
+
+pos_counter = Counter(pos_fts_list)
+pos_counter = dict(pos_counter.most_common(5))
+
+neg_counter = Counter(neg_fts_list)
+neg_counter = dict(neg_counter.most_common(5))
+
+positive_aspects_bar = px.bar(pd.DataFrame({'Well Performing Aspects' : pos_counter.keys(), '#Responses' : pos_counter.values()}), 
+                                x='Well Performing Aspects', y='#Responses', color_discrete_sequence=['green'])
+
+negative_aspects_bar = px.bar(pd.DataFrame({'Poorly Performing Aspects' : neg_counter.keys(), '#Responses' : neg_counter.values()}), 
+                                x='Poorly Performing Aspects', y='#Responses', color_discrete_sequence=['#E34234'])
+
+positive_aspects_bar.update_layout(
+    paper_bgcolor='#010203',
+    plot_bgcolor='#010203',
+    font=dict(color='white'),
+    title_x=0.5,
+    title=dict(text="Well Performing Aspects", font=dict(size=30)),
+)
+
+negative_aspects_bar.update_layout(
+    paper_bgcolor='#010203',
+    plot_bgcolor='#010203',
+    font=dict(color='white'),
+    title_x=0.5,
+    title=dict(text="Poorly Performing Aspects", font=dict(size=30)),
+)
+
+## -------------- ##
+
 app.layout = dbc.Container([
     html.H1("NPS Responses", className="text-center my-4", style={'color': 'white'}),
 
   dbc.Row([
-        dbc.Col([
-            html.H4("Total Responses", className="text-center", style={'color': '#1870d5'}),
-            html.H5(f"{total_responses}", className="text-center", style={'color': 'white'}),
-            html.H4("NPS Score", className="text-center", style={'color': '#1870d5', 'margin-top': '20px'}),
-            html.H5(f"{nps_score}%", className="text-center", style={'color': 'white'})
-        ], width=3),
-        dbc.Col([
-            html.H4("Promoters", className="text-center", style={'color': '#07da63'}),
-            html.H5(f"{promoters}", className="text-center", style={'color': 'white'})
-        ], width=3),
-        dbc.Col([
-            html.H4("Passive", className="text-center", style={'color': '#fd8c3e'}),
-            html.H5(f"{passives}", className="text-center", style={'color': 'white'})
-        ], width=3),
+        dbc.Row([
+            dbc.Col([
+                html.H4("Total Responses", className="text-center", style={'color': '#1870d5'}),
+                html.H5(f"{total_responses}", className="text-center", style={'color': 'white'}),
+                # html.H4("NPS Score", className="text-center", style={'color': '#1870d5', 'margin-top': '20px'}),
+                # html.H5(f"{nps_score}%", className="text-center", style={'color': 'white'})
+            ], width=3),
+            dbc.Col([
+                html.H4("Promoters", className="text-center", style={'color': '#07da63'}),
+                html.H5(f"{promoters}", className="text-center", style={'color': 'white'})
+            ], width=3),
+            dbc.Col([
+                html.H4("Passive", className="text-center", style={'color': '#fd8c3e'}),
+                html.H5(f"{passives}", className="text-center", style={'color': 'white'})
+            ], width=3),
 
-        dbc.Col([
-            html.H4("Detractors", className="text-center", style={'color': '#c61236'}),
-            html.H5(f"{detractors}", className="text-center", style={'color': 'white'})
-        ], width=3),
+            dbc.Col([
+                html.H4("Detractors", className="text-center", style={'color': '#c61236'}),
+                html.H5(f"{detractors}", className="text-center", style={'color': 'white'})
+            ], width=3)
+        ], justify='center'),
+
+        dbc.Row([
+            dbc.Col([
+                html.H4("NPS Score", className="text-center", style={'color': '#1870d5', 'margin-top': '60px'}),
+                html.H5(f"{nps_score}%", className="text-center", style={'color': 'white'})
+            ], width=3),
+
+            dbc.Col([
+                html.Div([
+                    dcc.Graph(
+                        figure=product_yn_bar
+                    )
+                ])
+            ], width=6),
+        ], justify='between')
 
     ], justify="center"),
 
@@ -159,13 +270,36 @@ app.layout = dbc.Container([
         )
     ], style={'width': '48%', 'display': 'inline-block'}),
 
-    # dcc.Graph(
-    #     figure=nps_over_time_fig
-    # ),
 
-    # dcc.Graph(
-    #     figure=pie_chart_figure
-    # ),
+    html.Div(children=[
+                    html.H4("Positive Feedback Wordcloud", style={'color': 'white', 'text-align': 'center'}),
+                    html.Img(src="data:image/png;base64," + pos_word_cloud_img),
+                ], style={'width': '48%', 'display': 'inline-block', 'text-align': 'center', 'margin': 'auto'}),
+
+    html.Div(children=[
+                    html.H4("Negative Feedback Wordcloud", style={'color': 'white', 'text-align': 'center'}),
+                    html.Img(src="data:image/png;base64," + neg_word_cloud_img)
+                ], style={'width': '48%', 'display': 'inline-block', 'text-align': 'center', 'margin': 'auto'}),
+
+    html.Div(
+        [
+            html.Br(),
+            html.Br(),
+            html.Br(),
+        ]
+    ),
+
+    html.Div([
+        dcc.Graph(
+            figure=positive_aspects_bar
+        )
+    ], style={'width': '48%', 'display': 'inline-block', 'margin':10}),  
+
+    html.Div([
+        dcc.Graph(
+            figure=negative_aspects_bar
+        )
+    ], style={'width': '48%', 'display': 'inline-block', 'margin':10}),
 
     html.P("Filter responses by entering a minimum and maximum score:", 
            className="text-center", style={'color': 'white', 'margin-top': '20px'}),
