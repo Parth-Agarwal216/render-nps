@@ -4,3 +4,5 @@ pandas==1.5.3
 pymongo==4.6.1
 gunicorn
 dash-tools
+collections
+wordcloud
