@@ -18,9 +18,13 @@ with open('credentials.json') as json_file:
     creds = json.load(json_file)
 
 atlas_conn_str = creds['Atlas-Conn-Str']
-survey_fields = eval(creds['Fields'])
+survey_fields = ['nps-score', 'review', 'checkbox_fts', 'rebuy', 'sentiment', 'date', 'actionable', 'summarised']
+
 def reformat_docs(doc):
     
+    if 'surveyData' in doc.keys():
+        doc = doc['surveyData']
+
     if 'review' not in doc.keys():
         if 'disappointing-experience' in doc.keys():
             doc['review'] = doc['disappointing-experience']
@@ -31,10 +35,10 @@ def reformat_docs(doc):
 
     if 'checkbox_fts' not in doc.keys():
         if 'promoter-features' in doc.keys():
-            doc['checkbox_fts'] = doc['promoter-features']
+            doc['checkbox_fts'] = str(doc['promoter-features'])
             del doc['promoter-features']
         elif 'passive/defractor-features' in doc.keys():
-            doc['checkbox_fts'] = doc['passive/defractor-features']
+            doc['checkbox_fts'] = str(doc['passive/defractor-features'])
             del doc['passive/defractor-features']
 
     return doc
