@@ -7,6 +7,7 @@ import pymongo
 import json
 import sys
 from collections import Counter
+from summary import *
 
 import base64
 from io import BytesIO
@@ -189,6 +190,16 @@ product_yn_bar.update_layout(
     showlegend=False,
 )
 
+## Summary Generation ##
+response_string = f""
+for i in range(10):
+  response_string += f"Response {i + 1} : {nps_data['review'].iloc[i]} \n" 
+
+summary = initial_summary_chain.run(RESPONSES = response_string)
+summary_points = summary.split('\n')
+
+## ---------------- ##
+
 ## NPS Pie Chart ##
 
 pie_chart_figure = px.pie(values=[promoters, passives, detractors], 
@@ -296,6 +307,28 @@ app.layout = dbc.Container([
         ], justify='between')
 
     ], justify="center"),
+
+    html.H3("AI-Powered Feedback Summary", className="text-center my-4", style={'color': 'white'}),
+  
+    html.Div(
+        [
+            html.Ul(
+                [html.Li([html.Strong(item.split(":")[0] + " : "), item.split(":")[1]]) 
+                for item in summary_points],
+                style={
+                    'color': 'white', 
+                    'width': '75%', 
+                    'list-style-type': 'none',  
+                    'padding-left': '0',
+                    'margin-left': 'auto',    
+                    'margin-right': 'auto'
+                }
+            )
+        ],
+        style={  
+            'width': '100%'          
+        }
+    ),
 
     html.Div([
         dcc.Graph(
