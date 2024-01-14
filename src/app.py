@@ -20,6 +20,27 @@ with open('credentials.json') as json_file:
 atlas_conn_str = creds['Atlas-Conn-Str']
 survey_fields = eval(creds['Fields'])
 
+def reformat_docs(doc):
+    
+    if 'review' not in doc.keys():
+        if 'disappointing-experience' in doc.keys():
+            doc['review'] = doc['disappointing-experience']
+            del doc['disappointing-experience']
+        elif 'improvements-required' in doc.keys():
+            doc['review'] = doc['improvements-required']
+            del doc['improvements-required']
+
+    if 'checkbox_fts' not in doc.keys():
+        if 'promoter-features' in doc.keys():
+            doc['checkbox_fts'] = doc['promoter-features']
+            del doc['promoter-features']
+        elif 'passive/defractor-features' in doc.keys():
+            doc['checkbox_fts'] = doc['passive/defractor-features']
+            del doc['passive/defractor-features']
+
+    return doc
+
+
 def get_nps_survey_responses(survey):
     try:
         client = pymongo.MongoClient(atlas_conn_str)
@@ -32,6 +53,7 @@ def get_nps_survey_responses(survey):
 
     survey_data_docs = []
     for doc in survey_collection.find():
+        doc = reformat_docs(doc)
         survey_data_docs.append(doc)
 
     survey_data_df = pd.DataFrame(survey_data_docs)[survey_fields]
@@ -148,10 +170,10 @@ nps_over_time_fig.update_traces(marker_line_width=0)
 ## Product Rebuy ##
 
 percent_rebuy_yes = round(100 * nps_data['rebuy'].sum()/len(nps_data))
-br = pd.DataFrame({'Yes/No':['Yes', 'No'], 'Percentage_Customers_Buy_Again':[percent_rebuy_yes, 100 - percent_rebuy_yes], 'Response':['Yes/No', 'Yes/No']})
+br = pd.DataFrame({'Yes/No':['Yes', 'No'], 'Percentage Customers Buy Again':[percent_rebuy_yes, 100 - percent_rebuy_yes], 'Response':['Yes/No', 'Yes/No']})
 
-product_yn_bar = px.bar(br, y="Response", x="Percentage_Customers_Buy_Again", orientation='h', color='Yes/No',
-                         color_discrete_sequence= ['green', 'red'], text=br['Percentage_Customers_Buy_Again'].apply(lambda x: f'{x}%'))
+product_yn_bar = px.bar(br, y="Response", x="Percentage Customers Buy Again", orientation='h', color='Yes/No',
+                         color_discrete_sequence= ['green', 'red'], text=br['Percentage Customers Buy Again'].apply(lambda x: f'{x}%'))
 
 product_yn_bar.update_layout(
     height=200,
