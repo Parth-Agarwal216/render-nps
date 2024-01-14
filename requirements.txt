@@ -7,3 +7,5 @@ dash-tools
 wordcloud
 langchain
 openai
+tiktoken
+cohere
