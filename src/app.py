@@ -12,7 +12,7 @@ import base64
 from io import BytesIO
 from wordcloud import WordCloud
 
-SURVEY_NAME = 'Survey1'
+SURVEY_NAME = 'Maple_Finance_Gateway_0'
 
 with open('credentials.json') as json_file:
     creds = json.load(json_file)
@@ -37,25 +37,24 @@ def get_nps_survey_responses(survey):
     survey_data_df = pd.DataFrame(survey_data_docs)[survey_fields]
     return survey_data_df
 
-nps_data = get_nps_survey_responses(SURVEY_NAME)
-
-print(nps_data['Sentiment'])
+# nps_data = get_nps_survey_responses(SURVEY_NAME)
+nps_data = pd.read_csv('Survey1.csv')
 
 total_responses = nps_data.shape[0]
 
-condition_detractors = (nps_data['Score'] >= 1) & (nps_data['Score'] <= 6)
+condition_detractors = (nps_data['nps-score'] >= 1) & (nps_data['nps-score'] <= 6)
 filter_detractors = nps_data[condition_detractors]
 detractors = len(filter_detractors)
 
-condition_detractors = (nps_data['Score'] >= 1) & (nps_data['Score'] <= 6)
+condition_detractors = (nps_data['nps-score'] >= 1) & (nps_data['nps-score'] <= 6)
 filter_detractors = nps_data[condition_detractors]
 detractors = len(filter_detractors)
 
-condition_passive = (nps_data['Score'] >= 7) & (nps_data['Score'] <= 8)
+condition_passive = (nps_data['nps-score'] >= 7) & (nps_data['nps-score'] <= 8)
 filter_passive = nps_data[condition_passive]
 passives = len(filter_passive)
 
-condition_promo = (nps_data['Score'] >= 9) & (nps_data['Score'] <= 10)
+condition_promo = (nps_data['nps-score'] >= 9) & (nps_data['nps-score'] <= 10)
 filter_promo = nps_data[condition_promo]
 promoters = len(filter_promo)
 
@@ -66,9 +65,9 @@ nps_data.loc[condition_detractors, 'Category'] = 'detractors'
 nps_data.loc[condition_passive, 'Category'] = 'passive'
 nps_data.loc[condition_promo, 'Category'] = 'promoters'
 
-nps_data['Month'] = nps_data['Date'].apply(lambda x : x.split('-')[1])
-nps_data.drop('Date', axis='columns')
-nps_data.sort_values('Month', inplace=True)
+nps_data['Month'] = nps_data['date'].apply(lambda x : x.split('-')[1])
+nps_data.sort_values('date', inplace=True)
+nps_data.drop('date', axis='columns')
 
 nps_data['NPS-over-time'] = 0
 for mo in nps_data['Month'].unique():
@@ -76,8 +75,8 @@ for mo in nps_data['Month'].unique():
 
 ## Word Cloud ##
 
-pos_reviews = " ".join(word for word in nps_data.loc[condition_promo, 'Review'])
-neg_reviews = " ".join(word for word in nps_data.loc[condition_passive | condition_detractors, 'Review'])
+pos_reviews = " ".join(word for word in nps_data.loc[condition_promo, 'review'])
+neg_reviews = " ".join(word for word in nps_data.loc[condition_passive | condition_detractors, 'review'])
 
 pos_word_cloud = WordCloud(collocations = False, background_color = '#010203',
                         width = 512, height = 256, min_font_size=16).generate(pos_reviews)
@@ -196,7 +195,7 @@ pos_fts_list = []
 neg_fts_list = []
 
 for idx in nps_data.index:
-    if nps_data.loc[idx, 'Sentiment'] == 'positive':
+    if nps_data.loc[idx, 'sentiment'] == 'positive':
         pos_fts_list.extend(eval(nps_data.loc[idx, 'checkbox_fts']))
     else:
         neg_fts_list.extend(eval(nps_data.loc[idx, 'checkbox_fts']))
@@ -373,10 +372,10 @@ def update_cards(min_score, max_score, sentiment):
         min_score = 1
     if max_score is None:
         max_score = 10
-    filtered_data = nps_data[(nps_data['Score'] >= min_score) & (nps_data['Score'] <= max_score)]
+    filtered_data = nps_data[(nps_data['nps-score'] >= min_score) & (nps_data['nps-score'] <= max_score)]
     if sentiment != None:
-        filtered_data = filtered_data[(filtered_data['Sentiment']) == sentiment]
-    return [generate_card(row['Score'], row['Review'], row['Sentiment']) for index, row in filtered_data.iterrows()]
+        filtered_data = filtered_data[(filtered_data['sentiment']) == sentiment]
+    return [generate_card(row['nps-score'], row['review'], row['sentiment']) for index, row in filtered_data.iterrows()]
 
 if __name__ == '__main__':
     app.run(debug=True)
