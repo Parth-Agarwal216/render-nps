@@ -39,6 +39,8 @@ def get_nps_survey_responses(survey):
 
 nps_data = get_nps_survey_responses(SURVEY_NAME)
 
+print(nps_data['Sentiment'])
+
 total_responses = nps_data.shape[0]
 
 condition_detractors = (nps_data['Score'] >= 1) & (nps_data['Score'] <= 6)
@@ -106,13 +108,27 @@ def score_color(nps_score):
         return '#07da63'
     else:
         return '#fd8c3e'
+    
+def sentiment_color(sentiment):
+    if sentiment == 'negative':
+        return '#c61236'
+    elif sentiment == 'positive':
+        return '#07da63'
+    else:
+        return '#fd8c3e'
 
-def generate_card(nps_score, review):
+def generate_card(nps_score, review, sentiment):
     return html.Div(
         dbc.Card(
             dbc.CardBody([
-                html.H5(f"Score: {nps_score}", className="card-title", 
-                        style={'color': score_color(nps_score)}),
+                dbc.Row([
+                    dbc.Col(html.H5(f"Score: {nps_score}", className="card-title", 
+                                    style={'color': score_color(nps_score)}), 
+                            width="auto", align="start"),
+                    dbc.Col(html.H6(f"Sentiment: {sentiment}", className="card-sentiment", 
+                                    style={'color': sentiment_color(sentiment)}), 
+                            width="auto", align="end")
+                ], justify="between"),  
                 html.P(review, className="card-text")
             ])
         ),
@@ -300,18 +316,49 @@ app.layout = dbc.Container([
             figure=negative_aspects_bar
         )
     ], style={'width': '48%', 'display': 'inline-block', 'margin':10}),
-
-    html.P("Filter responses by entering a minimum and maximum score:", 
-           className="text-center", style={'color': 'white', 'margin-top': '20px'}),
     
-    dbc.Row([
-        dbc.Col([
-            dcc.Input(id='min-score', type='number', placeholder='Min Score', value=1, 
-                      style={'marginRight': '100px', 'width': '100px'}),
-            dcc.Input(id='max-score', type='number', placeholder='Max Score', value=10, 
-                      style={'width': '100px'})
-        ], width=4, className="offset-md-4 text-center")
-    ], style={'margin-bottom': '20px'}),
+    html.Div(
+        [
+            html.Br(),
+            html.Br(),
+        ]
+    ),
+
+    html.Div([
+        dbc.Row([
+            
+            dbc.Col(
+                html.Div([
+                    html.P("Filter responses by min and max score:", 
+                        className="text-center", style={'color': 'white'}),
+                    html.Div([
+                        dcc.Input(id='min-score', type='number', placeholder='Min Score', 
+                                style={'marginRight': '10px', 'width': '100px'}),
+                        dcc.Input(id='max-score', type='number', placeholder='Max Score',
+                                style={'marginLeft': '10px', 'width': '100px'}),
+                    ], style={'display': 'flex', 'justifyContent': 'center', 'marginTop': '10px'}),
+                ], style={'textAlign': 'center'}),
+                width=6
+            ),
+            
+            dbc.Col(
+                html.Div([
+                    html.P("Filter responses by sentiment:", 
+                        className="text-center", style={'color': 'white'}),
+                    dcc.Dropdown(
+                        id='sentiment', placeholder = 'Sentiment',
+                        options=[
+                            {'label': 'Positive', 'value': 'positive'},
+                            {'label': 'Neutral', 'value': 'neutral'},
+                            {'label': 'Negative', 'value': 'negative'},
+                        ],
+                        style={'width': '140px', 'margin': '10px auto'},
+                    ),
+                ], style={'textAlign': 'center'}),
+                width=6
+            ),
+        ], style={'marginBottom': '20px'})
+    ]),
 
     html.Div(id='response-cards', style={'overflowY': 'scroll', 'height': '400px'})
 ], fluid=True, style={'backgroundColor': '#010203'} )
@@ -319,15 +366,17 @@ app.layout = dbc.Container([
 
 @app.callback(
     Output('response-cards', 'children'),
-    [Input('min-score', 'value'), Input('max-score', 'value')]
+    [Input('min-score', 'value'), Input('max-score', 'value'), Input('sentiment', 'value')]
 )
-def update_cards(min_score, max_score):
+def update_cards(min_score, max_score, sentiment):
     if min_score is None:
         min_score = 1
     if max_score is None:
         max_score = 10
     filtered_data = nps_data[(nps_data['Score'] >= min_score) & (nps_data['Score'] <= max_score)]
-    return [generate_card(row['Score'], row['Review']) for index, row in filtered_data.iterrows()]
+    if sentiment != None:
+        filtered_data = filtered_data[(filtered_data['Sentiment']) == sentiment]
+    return [generate_card(row['Score'], row['Review'], row['Sentiment']) for index, row in filtered_data.iterrows()]
 
 if __name__ == '__main__':
     app.run(debug=True)
