@@ -6,6 +6,4 @@ gunicorn
 dash-tools
 wordcloud
 langchain==0.1.0
-tiktoken
-cohere
-openai<1.0.0
+openai
