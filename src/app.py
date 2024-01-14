@@ -7,7 +7,6 @@ import pymongo
 import json
 import sys
 from collections import Counter
-# from summary import *
 
 import base64
 from io import BytesIO
@@ -19,7 +18,7 @@ with open('credentials.json') as json_file:
     creds = json.load(json_file)
 
 atlas_conn_str = creds['Atlas-Conn-Str']
-survey_fields = ['nps-score', 'review', 'checkbox_fts', 'rebuy', 'sentiment', 'date', 'actionable', 'summarised']
+survey_fields = eval(creds['Fields'])
 
 def reformat_docs(doc):
     
@@ -190,22 +189,6 @@ product_yn_bar.update_layout(
     showlegend=False,
 )
 
-## Summary Generation ##
-response_string = f""
-for i in range(10):
-  response_string += f"Response {i + 1} : {nps_data['review'].iloc[i]} \n" 
-
-# summary = initial_summary_chain.run(RESPONSES = response_string)
-# summary_points = summary.split('\n')
-summary_points = ['Refund process: Customers found the refund process to be complicated and time-consuming, with some experiencing delays in receiving their money back.',
- 'Service quality: Some customers appreciate the consistent quality of service and stress-free financial transactions.',
- 'Basic needs: Others feel that the company meets their basic needs but has not exceeded expectations in any aspect.',
- 'Apple Pay integration: There were issues with the Apple Pay payment integration at checkout, with some customers experiencing site crashes and frustration.',
- '2 factor authentication: Customers reported difficulties in setting up and using 2 factor authentication, with glitches and failure to receive codes.',
- 'Chatbot for customer support: The chatbot for customer support was found to be unresponsive and sometimes generated irrelevant answers.']
-
-## ---------------- ##
-
 ## NPS Pie Chart ##
 
 pie_chart_figure = px.pie(values=[promoters, passives, detractors], 
@@ -270,6 +253,13 @@ negative_aspects_bar.update_layout(
 )
 
 ## -------------- ##
+
+summary_points = ['Refund process: Customers found the refund process to be complicated and time-consuming, with some experiencing delays in receiving their money back.',
+ 'Service quality: Some customers appreciate the consistent quality of service and stress-free financial transactions.',
+ 'Basic needs: Others feel that the company meets their basic needs but has not exceeded expectations in any aspect.',
+ 'Apple Pay integration: There were issues with the Apple Pay payment integration at checkout, with some customers experiencing site crashes and frustration.',
+ '2 factor authentication: Customers reported difficulties in setting up and using 2 factor authentication, with glitches and failure to receive codes.',
+ 'Chatbot for customer support: The chatbot for customer support was found to be unresponsive and sometimes generated irrelevant answers.']
 
 app.layout = dbc.Container([
     html.H1("NPS Responses", className="text-center my-4", style={'color': 'white'}),
