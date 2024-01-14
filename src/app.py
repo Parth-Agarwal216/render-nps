@@ -19,7 +19,6 @@ with open('credentials.json') as json_file:
 
 atlas_conn_str = creds['Atlas-Conn-Str']
 survey_fields = eval(creds['Fields'])
-
 def reformat_docs(doc):
     
     if 'review' not in doc.keys():
