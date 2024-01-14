@@ -37,8 +37,7 @@ def get_nps_survey_responses(survey):
     survey_data_df = pd.DataFrame(survey_data_docs)[survey_fields]
     return survey_data_df
 
-# nps_data = get_nps_survey_responses(SURVEY_NAME)
-nps_data = pd.read_csv('Survey1.csv')
+nps_data = get_nps_survey_responses(SURVEY_NAME)
 
 total_responses = nps_data.shape[0]
 
