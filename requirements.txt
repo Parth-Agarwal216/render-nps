@@ -5,5 +5,5 @@ pymongo==4.6.1
 gunicorn
 dash-tools
 wordcloud
-langchain==0.1.0
+langchain
 openai
