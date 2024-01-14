@@ -309,8 +309,7 @@ app.layout = dbc.Container([
     html.Div(
         [
             html.Ul(
-                [html.Li([html.Strong(item.split(":")[0] + " : "), item.split(":")[1]]) 
-                for item in summary_points],
+                [html.Li(item) for item in summary_points],
                 style={
                     'color': 'white', 
                     'width': '75%', 
