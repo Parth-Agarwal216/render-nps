@@ -7,7 +7,7 @@ import pymongo
 import json
 import sys
 from collections import Counter
-from summary import *
+# from summary import *
 
 import base64
 from io import BytesIO
