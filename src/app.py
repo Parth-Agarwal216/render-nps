@@ -195,8 +195,14 @@ response_string = f""
 for i in range(10):
   response_string += f"Response {i + 1} : {nps_data['review'].iloc[i]} \n" 
 
-summary = initial_summary_chain.run(RESPONSES = response_string)
-summary_points = summary.split('\n')
+# summary = initial_summary_chain.run(RESPONSES = response_string)
+# summary_points = summary.split('\n')
+summary_points = ['Refund process: Customers found the refund process to be complicated and time-consuming, with some experiencing delays in receiving their money back.',
+ 'Service quality: Some customers appreciate the consistent quality of service and stress-free financial transactions.',
+ 'Basic needs: Others feel that the company meets their basic needs but has not exceeded expectations in any aspect.',
+ 'Apple Pay integration: There were issues with the Apple Pay payment integration at checkout, with some customers experiencing site crashes and frustration.',
+ '2 factor authentication: Customers reported difficulties in setting up and using 2 factor authentication, with glitches and failure to receive codes.',
+ 'Chatbot for customer support: The chatbot for customer support was found to be unresponsive and sometimes generated irrelevant answers.']
 
 ## ---------------- ##
 
